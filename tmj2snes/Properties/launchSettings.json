@@ -10,6 +10,10 @@
     "tmj2snes tilesetOnly": {
       "commandName": "Project",
       "commandLineArgs": "-t \"C:\\Github\\nubproj\\maps\\tile2.tsj\""
+    },
+    "worldwithtiles": {
+      "commandName": "Project",
+      "commandLineArgs": "-t! -w \"C:\\Github\\nubproj\\maps\\ta.world\" -t \"C:\\Github\\nubproj\\maps\\tile2.tsj\""
     }
   }
 }

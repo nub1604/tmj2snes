@@ -1,7 +1,5 @@
 ﻿using System.Globalization;
-using System.IO;
 using System.Text;
-using System.Xml.Linq;
 using tmj2snes.JsonFiles;
 
 const int N_METATILES = 1024; // maximum tiles
@@ -13,91 +11,102 @@ uint TILED_FLIPPED_VERTICALLY_FLAG = 0x40000000;
 
 string[] arguments = args;
 bool disableTileset = false;
-eConvertMode mode = eConvertMode.None;
 string file = "";
 string asmdir = "";
-int currentBankCounter = 0;
+long currentBankCounter = 0;
 
+List<(eConvertMode, string)> WorkItems = new();
 pvsneslib_tile_t[] tilesetbuffer = new pvsneslib_tile_t[N_METATILES];
 StringBuilder dataasm = new StringBuilder();
 dataasm.AppendLine(".include \"hdr.asm\"");
-SetupMode();
-ConvertMode();
 
 
+
+
+
+SetupWorkItems();
+ConvertWorkItems();
+
+dataasm.AppendLine($"; {currentBankCounter}bytes total");
 var path = new FileInfo(file).Directory!.FullName;
 using (FileStream fs = new(Path.Combine(path, "data.asm"), FileMode.Create))
 {
-
     byte[] info = new UTF8Encoding(true).GetBytes(dataasm.ToString());
     fs.Write(info, 0, info.Length);
-
-    
 }
 
 
-    void SetupMode()
-    {
-    mode = eConvertMode.Map;
+
+
+
+void SetupWorkItems()
+{
+
     for (int i = 0; i < arguments.Length; i++)
     {
         switch (arguments[i])
         {
-            case "-t!": //map no Tileset
+            case "-t!": //map no tileset in world or map
                 disableTileset = true;
                 break;
 
-            case "-t":  //only Tileset
-                mode = eConvertMode.Tileset;
-                CheckSetFile(i + 1);
+            case "-t":  //only tileset
+                WorkItems.Add(new(eConvertMode.Tileset, GetFileFromArgs(i + 1)));
+               
+
                 i++;
                 break;
 
             case "-w":  //world
-                mode = eConvertMode.World;
-                CheckSetFile(i+1);
+                WorkItems.Add(new(eConvertMode.World, GetFileFromArgs(i + 1)));
+               
+         
                 i++;
                 break;
 
             case "-a":  //datasm subfolder
-                
-                CheckSetFile(i + 1);
+                asmdir = GetFileFromArgs(i + 1);
                 i++;
                 break;
 
             default:    //map
-                CheckSetFile(i);
+                WorkItems.Add(new(eConvertMode.Map, GetFileFromArgs(i)));
                 break;
         }
     }
 }
-void ConvertMode()
+void ConvertWorkItems()
 {
-    switch (mode)
+    foreach (var witem in WorkItems)
     {
-        case eConvertMode.Tileset:
-            var ts = ExtractTilesetPropsFromFile(file);
-            ConvertTileset_T16(file, ts);
-            ConvertTileset_B16(file, ts);
+        file = witem.Item2;
+        switch (witem.Item1)
+        {
 
-            // Todo: Convert Tileset Only
+            case eConvertMode.Tileset:
+                var ts = ExtractTilesetPropsFromFile(file);
+                ConvertTileset_T16(file, ts);
+                ConvertTileset_B16(file, ts);
 
-            break;
+                // Todo: Convert Tileset Only
 
-        case eConvertMode.World:
-            var world = FileHandler.LoadFile<World>(file);
-            if (world == null) return;
-            var path = new FileInfo(file).Directory!.FullName;
+                break;
 
-            foreach (var item in world.Maps)
-            {
-                ConvertMap(Path.Combine(path, item.FileName));
-            }
-            break;
+            case eConvertMode.World:
+                var world = FileHandler.LoadFile<World>(file);
+                if (world == null) return;
+                var path = new FileInfo(file).Directory!.FullName;
 
-        case eConvertMode.Map:
-            ConvertMap(Path.Combine(file));
-            break;
+                foreach (var item in world.Maps)
+                {
+                    ConvertMap(Path.Combine(path, item.FileName));
+                }
+                break;
+
+            case eConvertMode.Map:
+                ConvertMap(Path.Combine(file));
+                break;
+        }
     }
 }
 Tileset? ExtractTilesetPropsFromFile(string file)
@@ -153,11 +162,10 @@ void ConvertTileset_T16(string file, Tileset? tileset)
     }
     var fi = new FileInfo(Path.Combine(path, $"{mName}.t16"));
     var t16File = $"{mName}.t16";
-    currentBankCounter++;
+    currentBankCounter += fi.Length;
     dataasm.AppendLine();
     dataasm.AppendLine($"tiledef{mName}:");
     dataasm.AppendLine($".incbin {Path.Combine(asmdir, t16File)}       ;{fi.Length} bytes");
-
 }
 void ConvertTileset_B16(string file, Tileset? tileset)
 {
@@ -175,12 +183,11 @@ void ConvertTileset_B16(string file, Tileset? tileset)
     }
     var fi = new FileInfo(Path.Combine(path, $"{mName}.b16"));
     var b16File = $"{mName}.b16";
-    currentBankCounter++;
+    currentBankCounter += fi.Length;
     dataasm.AppendLine();
     dataasm.AppendLine($"tileatt{mName}:");
     dataasm.AppendLine($".incbin {Path.Combine(asmdir, b16File)}       ;{fi.Length} bytes");
 }
-
 
 void ConvertMap(string file)
 {
@@ -245,14 +252,13 @@ void ConvertMap(string file)
                     else
                         PutWord(0x0000, mapStream);
                 }
-               
-            } 
+            }
             var fi = new FileInfo(Path.Combine(path, $"{layer.Name}.m16"));
-                var m16File = $"{layer.Name}.m16";
-            currentBankCounter++;
+            var m16File = $"{layer.Name}.m16";
+            currentBankCounter += fi.Length;
             dataasm.AppendLine();
-                dataasm.AppendLine($"{m16File}:");
-                dataasm.AppendLine($".incbin {Path.Combine(asmdir, m16File)}       ;{fi.Length} bytes");
+            dataasm.AppendLine($"{m16File}:");
+            dataasm.AppendLine($".incbin {Path.Combine(asmdir, m16File)}       ;{fi.Length} bytes");
         }
         else if (layer.Name == "Regions" && layer.Type == "objectgroup")
         {
@@ -283,7 +289,7 @@ void ConvertMap(string file)
             }
             var fi = new FileInfo(Path.Combine(path, $"{mName}.r16"));
             var r16File = $"{mName}.r16";
-            currentBankCounter++;
+            currentBankCounter += fi.Length;
             dataasm.AppendLine();
             dataasm.AppendLine($"reg{r16File}:");
             dataasm.AppendLine($".incbin {Path.Combine(asmdir, r16File)}       ;{fi.Length} bytes");
@@ -324,19 +330,28 @@ void ConvertMap(string file)
             }
             var fi = new FileInfo(Path.Combine(path, $"{mName}.o16"));
             var o16File = $"{mName}.o16";
-            currentBankCounter++;
+            currentBankCounter += fi.Length;
             dataasm.AppendLine();
             dataasm.AppendLine($"obj{o16File}:");
             dataasm.AppendLine($".incbin {Path.Combine(asmdir, o16File)}       ;{fi.Length} bytes");
         }
     }
 }
+string GetFileFromArgs(int index)
+{
+    if (index >= arguments.Length)
+    {
+        throw new ArgumentOutOfRangeException($"filepath expected");
+    }
+    return arguments[index];
+
+}
 
 void CheckSetFile(int index)
 {
     if (index >= arguments.Length)
     {
-        throw new ArgumentOutOfRangeException($"filepath for {mode.ToString()} expected");
+        throw new ArgumentOutOfRangeException($"filepath  expected");
     }
     file = arguments[index];
 }
