@@ -27,11 +27,15 @@ namespace tmj2snes.JsonFiles
         public int Y { get; set; }
     }
 
-    public class World
+    public class World : iConverter<World>
     {
 
         public static World? GetWorld(string input) => JsonSerializer.Deserialize<World>(input);
 
+        public World? Convert(string input)
+        {
+            return GetWorld(input);
+        }
 
         [JsonPropertyName("maps")]
         public List<Map> Maps { get; set; } = new ();

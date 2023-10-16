@@ -69,6 +69,7 @@ namespace tmj2snes.JsonFiles
     public class TiledObject
     {
         [JsonPropertyName("height")]
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
         public int Height { get; set; }
 
         [JsonPropertyName("id")]
@@ -111,9 +112,16 @@ namespace tmj2snes.JsonFiles
         public string Value { get; set; } = "";
     }
 
-    public class TileMap
+    public class TileMap: iConverter<TileMap>
     {
-        public static TileMap? GetTileMap(string input) => JsonSerializer.Deserialize<TileMap>(input);
+
+        public static TileMap? GetTileMap(string input) => JsonSerializer.Deserialize<TileMap>(input, new JsonSerializerOptions { Converters = { new AutoNumberToIntConverter() } });
+
+
+        public TileMap? Convert(string input)
+        {
+            return GetTileMap(input);
+        }
 
         [JsonPropertyName("compressionlevel")]
         public int Compressionlevel { get; set; }
@@ -170,9 +178,13 @@ namespace tmj2snes.JsonFiles
         public List<Property> Properties { get; set; } = new();
     }
 
-    public class Tileset
+    public class Tileset : iConverter<Tileset>
     {
         public static Tileset? GetTileset(string input) => JsonSerializer.Deserialize<Tileset>(input);
+        public Tileset? Convert(string input)
+        {
+            return GetTileset(input);
+        }
 
         [JsonPropertyName("columns")]
         public int Columns { get; set; }

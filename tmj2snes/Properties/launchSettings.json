@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "tmj2snes": {
+      "commandName": "Project"
+    },
+    "tmj world without tiles": {
+      "commandName": "Project",
+      "commandLineArgs": "-t! -w \"C:\\Github\\nubproj\\maps\\ta.world\""
+    }
+  }
+}
