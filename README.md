@@ -15,7 +15,7 @@
 Conversion of maps, worlds, and tilesets can be cascaded
 
 #example:
--tmj2snes -t! -w "C:\snesproject\my.world" -t "C:\snesproject\tileset.tsj" -a "maps/"
+- tmj2snes -t! -w "C:\snesproject\my.world" -t "C:\snesproject\tileset.tsj" -a "maps/"
 
 #this example creates all maps in my.world without the tileset and a separate tileset.
 #For each "incbin:" entry the "maps/" will added 
