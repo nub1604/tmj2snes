@@ -1,19 +1,23 @@
 {
   "profiles": {
-    "tmj2snes": {
-      "commandName": "Project"
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
     },
-    "tmj world without tiles": {
+    "nub1604 world without tiles": {
       "commandName": "Project",
       "commandLineArgs": "-t! -w \"C:\\Github\\nubproj\\maps\\ta.world\""
     },
-    "tmj2snes tilesetOnly": {
+    "nub1604 world with separate tiles": {
+      "commandName": "Project",
+      "commandLineArgs": "-t! -w \"C:\\Github\\nubproj\\maps\\ta.world\" -t \"C:\\Github\\nubproj\\maps\\tile2.tsj\""
+    },
+    "nub1604 tileset only": {
       "commandName": "Project",
       "commandLineArgs": "-t \"C:\\Github\\nubproj\\maps\\tile2.tsj\""
     },
-    "worldwithtiles": {
-      "commandName": "Project",
-      "commandLineArgs": "-t! -w \"C:\\Github\\nubproj\\maps\\ta.world\" -t \"C:\\Github\\nubproj\\maps\\tile2.tsj\""
+    "debug": {
+      "commandName": "Project"
     }
   }
 }
