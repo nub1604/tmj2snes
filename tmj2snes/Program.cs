@@ -220,6 +220,7 @@ void ConvertMap(string file)
                     if (tileattr != null)
                     {
                         var td = tileattr.ToString();
+                        td = td == "0" ? "1" : td; //prevent going negative
 
                         var finalf = (Convert.ToUInt32(td) - 1) & 0x03FF;
                         ushort tilesnes = Convert.ToUInt16(finalf); // keep on the low 16bits of tile number
@@ -329,5 +330,5 @@ void WriteDataASM(string filenname, string prefix, string suffix, string path)
     _currentBankCounter += fi.Length;
     _dataWriter.AppendLine();
     _dataWriter.AppendLine($"{prefix}{filenname}:");
-    _dataWriter.AppendLine($".incbin {Path.Combine(_asmdir, file)}       ;{fi.Length} bytes");
+    _dataWriter.AppendLine($".incbin \"{Path.Combine(_asmdir, file)}\"       ;{fi.Length} bytes");
 }
