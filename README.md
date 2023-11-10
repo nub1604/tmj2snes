@@ -3,7 +3,8 @@
 #features
 - convert worlds, maps, and tilesets (Important! Only json based worlds, maps, or tilesets are supported!)- 
 - able to extract nested and external tilesets in maps 
-- creates a data.asm file (no bank separation)
+- creates a data.asm file (now with bank separation)
+- create a exports.h header file for easier integration
 
 #command line arguments :
 - [file]      : convert a map
