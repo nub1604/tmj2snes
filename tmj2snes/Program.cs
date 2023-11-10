@@ -1,6 +1,9 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
 using System.Text;
+using System.Xml.Linq;
 using tmj2snes.JsonFiles;
+using static System.Collections.Specialized.BitVector32;
 
 const int N_METATILES = 1024; // maximum tiles
 const int N_OBJECTS = 64;     // maximum objects
@@ -13,25 +16,39 @@ bool _disableTileset = false;
 string _file = "";
 string _asmdir = "";
 long _currentBankCounter = 0;
+long _totalBankCounter = 0;
+long _SectionCounter = 0;
 
 List<(eConvertMode, string)> WorkItems = new();
 pvsneslib_tile_t[] tilesetbuffer = new pvsneslib_tile_t[N_METATILES];
 StringBuilder _dataWriter = new StringBuilder();
 _dataWriter.AppendLine(".include \"hdr.asm\"");
 
+StringBuilder _importWriter = new StringBuilder();
+_importWriter.AppendLine("#include <snes.h>");
+
 SetupWorkItems();
 ConvertWorkItems();
 
-_dataWriter.AppendLine($"; {_currentBankCounter}bytes total");
+_dataWriter.AppendLine($".ends ; .mapsection{_SectionCounter}, sectionsize {_currentBankCounter}/{ushort.MaxValue >> 1}");
+_dataWriter.AppendLine();
+_dataWriter.AppendLine($"; {_totalBankCounter}bytes total");
 var path = new FileInfo(_file).Directory!.FullName;
 using (FileStream fs = new(Path.Combine(path, "data.asm"), FileMode.Create))
 {
     byte[] info = new UTF8Encoding(true).GetBytes(_dataWriter.ToString());
     fs.Write(info, 0, info.Length);
 }
+using (FileStream fs = new(Path.Combine(path, "exports.c"), FileMode.Create))
+{
+    byte[] info = new UTF8Encoding(true).GetBytes(_importWriter.ToString());
+    fs.Write(info, 0, info.Length);
+}
 
 void SetupWorkItems()
 {
+
+
     for (int i = 0; i < _arguments.Length; i++)
     {
         switch (_arguments[i])
@@ -74,16 +91,19 @@ void SetupWorkItems()
 }
 void ConvertWorkItems()
 {
+    _dataWriter.AppendLine($"; section tiled nr {_SectionCounter}");
+    _dataWriter.AppendLine($".section \".mapsection{_SectionCounter}\" superfree");
     foreach (var witem in WorkItems)
     {
         _file = witem.Item2;
         switch (witem.Item1)
         {
             case eConvertMode.Tileset:
+                _importWriter.AppendLine($"//-----{_file}-----------");
                 var ts = ExtractTilesetPropsFromFile(_file);
                 ConvertTileset_T16(_file, ts);
                 ConvertTileset_B16(_file, ts);
-
+                _importWriter.AppendLine();
                 break;
 
             case eConvertMode.World:
@@ -93,12 +113,16 @@ void ConvertWorkItems()
 
                 foreach (var item in world.Maps)
                 {
+                    _importWriter.AppendLine($"//-----{item.FileName}-----------");
                     ConvertMap(Path.Combine(path, item.FileName));
+                    _importWriter.AppendLine();
                 }
                 break;
 
             case eConvertMode.Map:
+                _importWriter.AppendLine($"//-----{_file}-----------");
                 ConvertMap(Path.Combine(_file));
+                _importWriter.AppendLine();
                 break;
         }
     }
@@ -154,6 +178,7 @@ void ConvertTileset_T16(string file, Tileset? tileset)
         }
     }
     WriteDataASM(tName, "tiledef_", "t16", path);
+    WriteImports(tName, "tiledef_");
 }
 void ConvertTileset_B16(string file, Tileset? tileset)
 {
@@ -170,6 +195,7 @@ void ConvertTileset_B16(string file, Tileset? tileset)
         }
     }
     WriteDataASM(bName, "tileatt_", "b16", path);
+    WriteImports(bName, "tiledef_");
 }
 
 void ConvertMap(string file)
@@ -202,6 +228,7 @@ void ConvertMap(string file)
         }
         ConvertTileset_T16(file, ts);
         ConvertTileset_B16(file, ts);
+        _dataWriter.AppendLine();
     }
 
     foreach (var layer in map.Layers)
@@ -238,6 +265,7 @@ void ConvertMap(string file)
                 }
             }
             WriteDataASM(layer.Name, "", "m16", path);
+            WriteImports(layer.Name, "");
         }
         else if (layer.Name == "Regions" && layer.Type == "objectgroup")
         {
@@ -267,6 +295,7 @@ void ConvertMap(string file)
                 PutWord(ushort.MaxValue, objStream);
             }
             WriteDataASM(mName, "reg_", "r16", path);
+            WriteImports(mName, "reg_");
         }
         else if (layer.Name == "Entities" && layer.Type == "objectgroup")
         {
@@ -303,6 +332,7 @@ void ConvertMap(string file)
                 PutWord(ushort.MaxValue, objStream);
             }
             WriteDataASM(mName, "obj_", "o16", path);
+            WriteImports(mName, "obj_");
         }
     }
 }
@@ -327,8 +357,29 @@ void WriteDataASM(string filenname, string prefix, string suffix, string path)
 {
     var file = $"{filenname}.{suffix}";
     var fi = new FileInfo(Path.Combine(path, file));
+    if (_currentBankCounter + fi.Length >= ushort.MaxValue >> 1)
+    {
+      
+        _dataWriter.AppendLine();
+        _dataWriter.AppendLine($".ends ; .mapsection{_SectionCounter}, sectionsize {_currentBankCounter}/{ushort.MaxValue >> 1}");
+        _dataWriter.AppendLine();
+        _currentBankCounter = 0;
+        _SectionCounter++;
+        _dataWriter.AppendLine($"; section tiled nr {_SectionCounter}");
+        _dataWriter.AppendLine($".section \".mapsection{_SectionCounter}\" superfree");
+        _dataWriter.AppendLine();
+    }
+
+
+
+
     _currentBankCounter += fi.Length;
+    _totalBankCounter += fi.Length;
     _dataWriter.AppendLine();
     _dataWriter.AppendLine($"{prefix}{filenname}:");
     _dataWriter.AppendLine($".incbin \"{Path.Combine(_asmdir, file)}\"       ;{fi.Length} bytes");
+}
+void WriteImports(string filenname, string prefix)
+{
+    _importWriter.AppendLine($"extern char {prefix}{filenname};");
 }
