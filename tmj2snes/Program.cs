@@ -25,7 +25,11 @@ StringBuilder _dataWriter = new StringBuilder();
 _dataWriter.AppendLine(".include \"hdr.asm\"");
 
 StringBuilder _importWriter = new StringBuilder();
+
+_importWriter.AppendLine("#ifndef TILEDEXPORT_H");
+_importWriter.AppendLine("#define TILEDEXPORT_H");
 _importWriter.AppendLine("#include <snes.h>");
+
 
 SetupWorkItems();
 ConvertWorkItems();
@@ -33,13 +37,14 @@ ConvertWorkItems();
 _dataWriter.AppendLine($".ends ; .mapsection{_SectionCounter}, sectionsize {_currentBankCounter}/{ushort.MaxValue >> 1}");
 _dataWriter.AppendLine();
 _dataWriter.AppendLine($"; {_totalBankCounter}bytes total");
+_importWriter.AppendLine("#endif // TILEDEXPORT_H");
 var path = new FileInfo(_file).Directory!.FullName;
 using (FileStream fs = new(Path.Combine(path, "data.asm"), FileMode.Create))
 {
     byte[] info = new UTF8Encoding(true).GetBytes(_dataWriter.ToString());
     fs.Write(info, 0, info.Length);
 }
-using (FileStream fs = new(Path.Combine(path, "exports.c"), FileMode.Create))
+using (FileStream fs = new(Path.Combine(path, "exports.h"), FileMode.Create))
 {
     byte[] info = new UTF8Encoding(true).GetBytes(_importWriter.ToString());
     fs.Write(info, 0, info.Length);
