@@ -200,7 +200,7 @@ void ConvertTileset_B16(string file, Tileset? tileset)
         }
     }
     WriteDataASM(bName, "tileatt_", "b16", path);
-    WriteImports(bName, "tiledef_");
+    WriteImports(bName, "tileatt_");
 }
 
 void ConvertMap(string file)
