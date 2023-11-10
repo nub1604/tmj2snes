@@ -22,8 +22,6 @@ long _SectionCounter = 0;
 List<(eConvertMode, string)> WorkItems = new();
 pvsneslib_tile_t[] tilesetbuffer = new pvsneslib_tile_t[N_METATILES];
 StringBuilder _dataWriter = new StringBuilder();
-_dataWriter.AppendLine(".include \"hdr.asm\"");
-
 StringBuilder _importWriter = new StringBuilder();
 
 _importWriter.AppendLine("#ifndef TILEDEXPORT_H");
