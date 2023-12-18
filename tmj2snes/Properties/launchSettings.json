@@ -10,7 +10,7 @@
     },
     "nub1604 world with separate tiles": {
       "commandName": "Project",
-      "commandLineArgs": "-t! -w \"C:\\Github\\nubproj\\maps\\ta.world\" -t \"C:\\Github\\nubproj\\maps\\tile2.tsj\""
+      "commandLineArgs": "-t! -w \"C:\\Github\\nubproj\\maps\\ta.world\""
     },
     "nub1604 tileset only": {
       "commandName": "Project",
@@ -18,6 +18,10 @@
     },
     "debug": {
       "commandName": "Project"
+    },
+    "Profil \"1\"": {
+      "commandName": "Project",
+      "commandLineArgs": "-t! -w \"C:\\Github\\nubproj\\maps\\0ta.world\" -t $C:\\Github\\nubproj\\maps\\tsdefendbase.tsj -t C:\\Github\\nubproj\\maps\\tstownsinner.tsj -t C:\\Github\\nubproj\\maps\\tiledeep.tsj -t C:\\Github\\nubproj\\maps\\tile3.tsj"
     }
   }
 }

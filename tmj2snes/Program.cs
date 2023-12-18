@@ -102,10 +102,12 @@ void ConvertWorkItems()
         switch (witem.Item1)
         {
             case eConvertMode.Tileset:
+              
                 _importWriter.AppendLine($"//-----{_file}-----------");
                 var ts = ExtractTilesetPropsFromFile(_file);
                 ConvertTileset_T16(_file, ts);
                 ConvertTileset_B16(_file, ts);
+                Console.WriteLine($"Convert Tileset {_file}");
                 _importWriter.AppendLine();
                 break;
 
@@ -113,11 +115,12 @@ void ConvertWorkItems()
                 var world = FileHandler.LoadFile<World>(_file);
                 if (world == null) return;
                 var path = new FileInfo(_file).Directory!.FullName;
-
+                Console.WriteLine($"Convert World {_file}");
                 foreach (var item in world.Maps)
                 {
                     _importWriter.AppendLine($"//-----{item.FileName}-----------");
                     ConvertMap(Path.Combine(path, item.FileName));
+                    Console.WriteLine($"Convert Map {item.FileName}");
                     _importWriter.AppendLine();
                 }
                 break;
@@ -125,6 +128,7 @@ void ConvertWorkItems()
             case eConvertMode.Map:
                 _importWriter.AppendLine($"//-----{_file}-----------");
                 ConvertMap(Path.Combine(_file));
+                Console.WriteLine($"Convert Map {_file}");
                 _importWriter.AppendLine();
                 break;
         }
@@ -233,6 +237,8 @@ void ConvertMap(string file)
         ConvertTileset_B16(file, ts);
         _dataWriter.AppendLine();
     }
+    int objectLayerCount = 0;
+    int regionLayerCount = 0;
 
     foreach (var layer in map.Layers)
     {
@@ -276,6 +282,8 @@ void ConvertMap(string file)
             {
                 throw new ArgumentOutOfRangeException($"tmj2snes: error to many regions (max {N_REGIONS}) ({layer.Objects.Count})");
             }
+            if (regionLayerCount > 0)
+                mName += $"_{regionLayerCount}";
             using (FileStream objStream = new(Path.Combine(path, $"{mName}.r16"), FileMode.Create))
             {
                 pvsneslib_region_t pvreg;
@@ -299,6 +307,7 @@ void ConvertMap(string file)
             }
             WriteDataASM(mName, "reg_", "r16", path);
             WriteImports(mName, "reg_");
+            regionLayerCount++;
         }
         else if (layer.Name == "Entities" && layer.Type == "objectgroup")
         {
@@ -306,6 +315,9 @@ void ConvertMap(string file)
             {
                 throw new ArgumentOutOfRangeException($"tmj2snes: error to many objects (max {N_OBJECTS}) ({layer.Objects.Count})");
             }
+            if (objectLayerCount > 0)
+                mName += $"_{objectLayerCount}";
+
             using (FileStream objStream = new(Path.Combine(path, $"{mName}.o16"), FileMode.Create))
             {
                 foreach (var obj in layer.Objects)
@@ -336,6 +348,7 @@ void ConvertMap(string file)
             }
             WriteDataASM(mName, "obj_", "o16", path);
             WriteImports(mName, "obj_");
+            objectLayerCount++;
         }
     }
 }
