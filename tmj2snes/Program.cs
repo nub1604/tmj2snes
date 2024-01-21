@@ -276,15 +276,14 @@ void ConvertMap(string file)
             WriteDataASM(layer.Name, "", "m16", path);
             WriteImports(layer.Name, "");
         }
-        else if (layer.Name == "Regions" && layer.Type == "objectgroup")
+        else if (layer.Name.StartsWith("Regions") && layer.Type == "objectgroup")
         {
             if (layer.Objects.Count > N_REGIONS)
             {
                 throw new ArgumentOutOfRangeException($"tmj2snes: error to many regions (max {N_REGIONS}) ({layer.Objects.Count})");
             }
-            if (regionLayerCount > 0)
-                mName += $"_{regionLayerCount}";
-            using (FileStream objStream = new(Path.Combine(path, $"{mName}.r16"), FileMode.Create))
+            var rName = mName + layer.Name.Replace("Regions", "");
+            using (FileStream objStream = new(Path.Combine(path, $"{rName}.r16"), FileMode.Create))
             {
                 pvsneslib_region_t pvreg;
                 for (int i = 0; i < layer.Objects.Count; i++)
@@ -305,30 +304,29 @@ void ConvertMap(string file)
                 //  PutWord(0xFFFF, objStream); //termination
                 PutWord(ushort.MaxValue, objStream);
             }
-            WriteDataASM(mName, "reg_", "r16", path);
-            WriteImports(mName, "reg_");
+            WriteDataASM(rName, "reg_", "r16", path);
+            WriteImports(rName, "reg_");
             regionLayerCount++;
         }
-        else if (layer.Name == "Entities" && layer.Type == "objectgroup")
+        else if (layer.Name.StartsWith("Entities") && layer.Type == "objectgroup")
         {
             if (layer.Objects.Count > N_OBJECTS)
             {
                 throw new ArgumentOutOfRangeException($"tmj2snes: error to many objects (max {N_OBJECTS}) ({layer.Objects.Count})");
             }
-            if (objectLayerCount > 0)
-                mName += $"_{objectLayerCount}";
-
-            using (FileStream objStream = new(Path.Combine(path, $"{mName}.o16"), FileMode.Create))
+            var oName = mName + layer.Name.Replace("Entities", "");
+            using (FileStream objStream = new(Path.Combine(path, $"{oName}.o16"), FileMode.Create))
             {
                 foreach (var obj in layer.Objects)
                 {
-                    pvsneslib_object_t pvobj = new pvsneslib_object_t();
-
-                    pvobj.x = Convert.ToUInt16(obj.X);
-                    pvobj.y = Convert.ToUInt16(obj.Y);
-                    pvobj.type = Convert.ToUInt16(obj.Type);
-                    pvobj.minx = 0;
-                    pvobj.maxx = 0;
+                    pvsneslib_object_t pvobj = new pvsneslib_object_t
+                    {
+                        x = Convert.ToUInt16(obj.X),
+                        y = Convert.ToUInt16(obj.Y),
+                        type = Convert.ToUInt16(obj.Type),
+                        minx = 0,
+                        maxx = 0
+                    };
 
                     foreach (var prop in obj.Properties)
                     {
@@ -346,8 +344,8 @@ void ConvertMap(string file)
                 //  PutWord(0xFFFF, objStream);
                 PutWord(ushort.MaxValue, objStream);
             }
-            WriteDataASM(mName, "obj_", "o16", path);
-            WriteImports(mName, "obj_");
+            WriteDataASM(oName, "obj_", "o16", path);
+            WriteImports(oName, "obj_");
             objectLayerCount++;
         }
     }
