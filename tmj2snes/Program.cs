@@ -329,9 +329,9 @@ void ConvertMap(string file)
                     foreach (var prop in obj.Properties)
                     {
                         if (prop.Name == "minx")
-                            pvobj.minx = ConvertTo16BitNumber(prop.Value);
+                            pvobj.minx = ConvertTo16BitNumber(prop);
                         if (prop.Name == "maxx")
-                            pvobj.maxx = ConvertTo16BitNumber(prop.Value);
+                            pvobj.maxx = ConvertTo16BitNumber(prop);
                     }
                     PutWord(pvobj.x, objStream);
                     PutWord(pvobj.y, objStream);
@@ -348,23 +348,33 @@ void ConvertMap(string file)
         }
     }
 }
-ushort ConvertTo16BitNumber(string input)
+ushort ConvertTo16BitNumber(Property input)
 {
-    var res1 = new Regex(@"\b0x[0-9A-Fa-f]+\b").Match(input);
+    try
+    {
+
+   
+    var res1 = new Regex(@"\b0x[0-9A-Fa-f]+\b").Match(input.Value);
     if (res1.Success)
     {
         var hv1 = res1.Value.Substring(2);
         if (ushort.TryParse(hv1, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
             return result;
     }
-    var res2 = new Regex(@"\b0b[01]{16}\b").Match(input);
+    var res2 = new Regex(@"\b0b[01]{16}\b").Match(input.Value);
     if (res2.Success)
     {
         var hv2 = res1.Value.Substring(2);
         if (ushort.TryParse(hv2, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
             return result;
     }
-    return Convert.ToUInt16(input);
+    return Convert.ToUInt16(input.Value);
+    }
+    catch (Exception)
+    {
+        Console.WriteLine($"error formatexception: {input.Value} in {input.Name} is not valid");
+        throw;
+    }
 }
 
 string GetFileFromArgs(int index)
