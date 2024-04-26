@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using tmj2snes.JsonFiles;
 using static System.Collections.Specialized.BitVector32;
@@ -28,7 +29,6 @@ _importWriter.AppendLine("#ifndef TILEDEXPORT_H");
 _importWriter.AppendLine("#define TILEDEXPORT_H");
 _importWriter.AppendLine("#include <snes.h>");
 
-
 SetupWorkItems();
 ConvertWorkItems();
 
@@ -50,8 +50,6 @@ using (FileStream fs = new(Path.Combine(path, "exports.h"), FileMode.Create))
 
 void SetupWorkItems()
 {
-
-
     for (int i = 0; i < _arguments.Length; i++)
     {
         switch (_arguments[i])
@@ -102,7 +100,7 @@ void ConvertWorkItems()
         switch (witem.Item1)
         {
             case eConvertMode.Tileset:
-              
+
                 _importWriter.AppendLine($"//-----{_file}-----------");
                 var ts = ExtractTilesetPropsFromFile(_file);
                 ConvertTileset_T16(_file, ts);
@@ -331,9 +329,9 @@ void ConvertMap(string file)
                     foreach (var prop in obj.Properties)
                     {
                         if (prop.Name == "minx")
-                            pvobj.minx = Convert.ToUInt16(prop.Value);
+                            pvobj.minx = ConvertTo16BitNumber(prop.Value);
                         if (prop.Name == "maxx")
-                            pvobj.maxx = Convert.ToUInt16(prop.Value);
+                            pvobj.maxx = ConvertTo16BitNumber(prop.Value);
                     }
                     PutWord(pvobj.x, objStream);
                     PutWord(pvobj.y, objStream);
@@ -350,6 +348,25 @@ void ConvertMap(string file)
         }
     }
 }
+ushort ConvertTo16BitNumber(string input)
+{
+    var res1 = new Regex(@"\b0x[0-9A-Fa-f]+\b").Match(input);
+    if (res1.Success)
+    {
+        var hv1 = res1.Value.Substring(2);
+        if (ushort.TryParse(hv1, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
+            return result;
+    }
+    var res2 = new Regex(@"\b0b[01]{16}\b").Match(input);
+    if (res2.Success)
+    {
+        var hv2 = res1.Value.Substring(2);
+        if (ushort.TryParse(hv2, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
+            return result;
+    }
+    return Convert.ToUInt16(input);
+}
+
 string GetFileFromArgs(int index)
 {
     if (index >= _arguments.Length)
@@ -373,7 +390,6 @@ void WriteDataASM(string filenname, string prefix, string suffix, string path)
     var fi = new FileInfo(Path.Combine(path, file));
     if (_currentBankCounter + fi.Length >= ushort.MaxValue >> 1)
     {
-      
         _dataWriter.AppendLine();
         _dataWriter.AppendLine($".ends ; .mapsection{_SectionCounter}, sectionsize {_currentBankCounter}/{ushort.MaxValue >> 1}");
         _dataWriter.AppendLine();
@@ -383,9 +399,6 @@ void WriteDataASM(string filenname, string prefix, string suffix, string path)
         _dataWriter.AppendLine($".section \".mapsection{_SectionCounter}\" superfree");
         _dataWriter.AppendLine();
     }
-
-
-
 
     _currentBankCounter += fi.Length;
     _totalBankCounter += fi.Length;
