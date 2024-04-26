@@ -354,14 +354,14 @@ ushort ConvertTo16BitNumber(Property input)
     {
 
    
-    var res1 = new Regex(@"\b0x[0-9A-Fa-f]+\b").Match(input.Value);
+    var res1 = new Regex(@"\b0x[0-9A-Fa-f]+\b").Match(input.Value.Trim());
     if (res1.Success)
     {
         var hv1 = res1.Value.Substring(2);
         if (ushort.TryParse(hv1, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
             return result;
     }
-    var res2 = new Regex(@"\b0b[01]{16}\b").Match(input.Value);
+    var res2 = new Regex(@"\b0b[01]{16}\b").Match(input.Value.Trim());
     if (res2.Success)
     {
         var hv2 = res1.Value.Substring(2);
