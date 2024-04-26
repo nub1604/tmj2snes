@@ -1,10 +1,7 @@
-﻿using System.Diagnostics;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 using tmj2snes.JsonFiles;
-using static System.Collections.Specialized.BitVector32;
 
 const int N_METATILES = 1024; // maximum tiles
 const int N_OBJECTS = 64;     // maximum objects
@@ -329,9 +326,9 @@ void ConvertMap(string file)
                     foreach (var prop in obj.Properties)
                     {
                         if (prop.Name == "minx")
-                            pvobj.minx = ConvertTo16BitNumber(prop);
+                            pvobj.minx = ConvertTo16BitNumber(prop, mName);
                         if (prop.Name == "maxx")
-                            pvobj.maxx = ConvertTo16BitNumber(prop);
+                            pvobj.maxx = ConvertTo16BitNumber(prop, mName);
                     }
                     PutWord(pvobj.x, objStream);
                     PutWord(pvobj.y, objStream);
@@ -348,33 +345,40 @@ void ConvertMap(string file)
         }
     }
 }
-ushort ConvertTo16BitNumber(Property input)
+ushort ConvertTo16BitNumber(Property input, string mapname)
 {
     try
     {
-
-   
-    var res1 = new Regex(@"\b0x[0-9A-Fa-f]+\b").Match(input.Value.Trim());
-    if (res1.Success)
-    {
-        var hv1 = res1.Value.Substring(2);
-        if (ushort.TryParse(hv1, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
-            return result;
-    }
-    var res2 = new Regex(@"\b0b[01]{16}\b").Match(input.Value.Trim());
-    if (res2.Success)
-    {
-        var hv2 = res1.Value.Substring(2);
-        if (ushort.TryParse(hv2, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
-            return result;
-    }
-    return Convert.ToUInt16(input.Value);
+        var res1 = new Regex(@"\b0x[0-9A-Fa-f]+\b").Match(input.Value.Trim());
+        if (res1.Success)
+        {
+            var hv1 = res1.Value[2..];
+            if (ushort.TryParse(hv1, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
+                return result;
+        }
+        var res2 = new Regex(@"\b0b[01]{16}\b").Match(input.Value.Trim());
+        if (res2.Success)
+        {
+            var hv2 = res2.Value[2..];
+            if (ushort.TryParse(hv2, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
+                return result;
+        }
+        var res3 = new Regex(@"\b0b[01]{8}\b").Match(input.Value.Trim());
+        if (res3.Success)
+        {
+            var hv3 = res3.Value[2..];
+            if (ushort.TryParse(hv3, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
+                return result;
+        }
+        return Convert.ToUInt16(input.Value);
     }
     catch (Exception)
     {
-        Console.WriteLine($"error formatexception: {input.Value} in {input.Name} is not valid");
-        throw;
+        Console.WriteLine($"error: {input.Value} on property {input.Name} in {mapname} is not valid");
+        Environment.Exit(11);
     }
+    return 0;
+
 }
 
 string GetFileFromArgs(int index)
