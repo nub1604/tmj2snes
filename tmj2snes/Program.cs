@@ -1,7 +1,13 @@
 ﻿using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using tmj2snes.CustomConverter;
 using tmj2snes.JsonFiles;
+
+
+
+ConverterExtensions extensions = new();
+extensions.LoadAll();
 
 const int N_METATILES = 1024; // maximum tiles
 const int N_OBJECTS = 64;     // maximum objects
@@ -114,7 +120,7 @@ void ConvertWorkItems()
                 foreach (var item in world.Maps)
                 {
                     _importWriter.AppendLine($"//-----{item.FileName}-----------");
-                    ConvertMap(Path.Combine(path, item.FileName));
+                    ConvertMap(Path.Combine(path, item.FileName), world);
                     Console.WriteLine($"Convert Map {item.FileName}");
                     _importWriter.AppendLine();
                 }
@@ -122,7 +128,7 @@ void ConvertWorkItems()
 
             case eConvertMode.Map:
                 _importWriter.AppendLine($"//-----{_file}-----------");
-                ConvertMap(Path.Combine(_file));
+                ConvertMap(Path.Combine(_file), null);
                 Console.WriteLine($"Convert Map {_file}");
                 _importWriter.AppendLine();
                 break;
@@ -200,7 +206,7 @@ void ConvertTileset_B16(string file, Tileset? tileset)
     WriteImports(bName, "tileatt_");
 }
 
-void ConvertMap(string file)
+void ConvertMap(string file, World? world )
 {
     var map = FileHandler.LoadFile<TileMap>(file);
     if (map == null) return;
@@ -234,6 +240,13 @@ void ConvertMap(string file)
     }
     int objectLayerCount = 0;
     int regionLayerCount = 0;
+
+
+
+
+    extensions.Run(path,mName, map, world);
+
+
 
     foreach (var layer in map.Layers)
     {

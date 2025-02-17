@@ -1,0 +1,9 @@
+{
+  "LayerName": "Regions",
+  "LayerType": "objectgroup",
+  "TriggerName": "setT",
+  "InputLayout": "tm,tr,d",
+  "Parameter": "targetmap,targetobject, d",
+  "Script": "settrans.lua",
+  "OutputFile": "settrans.json"
+}

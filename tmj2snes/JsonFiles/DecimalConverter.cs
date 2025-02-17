@@ -13,6 +13,7 @@ namespace tmj2snes.JsonFiles
     {
         public override bool CanConvert(Type typeToConvert)
         {
+            
             var res = typeof(Int32) == typeToConvert;
             return res;
         }
