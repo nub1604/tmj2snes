@@ -15,6 +15,7 @@ const int N_REGIONS = 16;     // maximum regions
 const uint TILED_FLIPPED_HORIZONTALLY_FLAG = 0x80000000;
 const uint TILED_FLIPPED_VERTICALLY_FLAG = 0x40000000;
 
+List<string> _dataSizeExports = new();
 string[] _arguments = args;
 bool _disableTileset = false;
 string _file = "";
@@ -38,8 +39,25 @@ ConvertWorkItems();
 _dataWriter.AppendLine($".ends ; .mapsection{_SectionCounter}, sectionsize {_currentBankCounter}/{ushort.MaxValue >> 1}");
 _dataWriter.AppendLine();
 _dataWriter.AppendLine($"; {_totalBankCounter}bytes total");
-_importWriter.AppendLine("#endif // TILEDEXPORT_H");
+_importWriter.AppendLine("// reference size defines");
+for (int i = 0; i < _dataSizeExports.Count; i++)
+{
+    if (i % 5 == 0)
+    {
+        _dataWriter.AppendLine();
+        _dataWriter.Append(".EXPORT ");
+    }
+    _dataWriter.Append($"{_dataSizeExports[i]}_size ");
+    _importWriter.AppendLine($"extern char {_dataSizeExports[i]}_size;");
+}
+ _importWriter.AppendLine("#endif // TILEDEXPORT_H");
+
+
+
 var path = new FileInfo(_file).Directory!.FullName;
+
+
+
 using (FileStream fs = new(Path.Combine(path, "data.asm"), FileMode.Create))
 {
     byte[] info = new UTF8Encoding(true).GetBytes(_dataWriter.ToString());
@@ -252,7 +270,6 @@ void ConvertMap(string file, World? world )
     {
         if (layer.Type == "tilelayer")
         {
-            //todo: .m16
             using (FileStream mapStream = new(Path.Combine(path, $"{layer.Name}.m16"), FileMode.Create))
             {
                 PutWord((ushort)(map.Width * map.Tilewidth), mapStream);
@@ -411,6 +428,8 @@ void PutWord(ushort data, Stream fp)
     fp.WriteByte(HI_BYTE(data));
 } // end of PutWord
 
+
+
 void WriteDataASM(string filenname, string prefix, string suffix, string path)
 {
     var file = $"{filenname}.{suffix}";
@@ -429,9 +448,12 @@ void WriteDataASM(string filenname, string prefix, string suffix, string path)
 
     _currentBankCounter += fi.Length;
     _totalBankCounter += fi.Length;
+
+    var label = $"{prefix}{filenname}";
+    _dataSizeExports.Add( label );
     _dataWriter.AppendLine();
-    _dataWriter.AppendLine($"{prefix}{filenname}:");
-    _dataWriter.AppendLine($".incbin \"{Path.Combine(_asmdir, file)}\"       ;{fi.Length} bytes");
+    _dataWriter.AppendLine($"{label}:");
+    _dataWriter.AppendLine($".incbin \"{Path.Combine(_asmdir, file)}\" FSIZE {label}_size\t;{fi.Length} bytes");
 }
 void WriteImports(string filenname, string prefix)
 {
