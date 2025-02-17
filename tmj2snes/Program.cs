@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using NLua;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using tmj2snes.CustomConverter;
@@ -8,6 +9,8 @@ using tmj2snes.JsonFiles;
 
 ConverterExtensions extensions = new();
 extensions.LoadAll();
+extensions.ExecuteAllBegin();
+
 
 const int N_METATILES = 1024; // maximum tiles
 const int N_OBJECTS = 64;     // maximum objects
@@ -52,8 +55,6 @@ for (int i = 0; i < _dataSizeExports.Count; i++)
 }
  _importWriter.AppendLine("#endif // TILEDEXPORT_H");
 
-
-
 var path = new FileInfo(_file).Directory!.FullName;
 
 
@@ -68,6 +69,8 @@ using (FileStream fs = new(Path.Combine(path, "exports.h"), FileMode.Create))
     byte[] info = new UTF8Encoding(true).GetBytes(_importWriter.ToString());
     fs.Write(info, 0, info.Length);
 }
+extensions.ExecuteAllEnd();
+
 
 void SetupWorkItems()
 {
@@ -258,13 +261,7 @@ void ConvertMap(string file, World? world )
     }
     int objectLayerCount = 0;
     int regionLayerCount = 0;
-
-
-
-
-    extensions.Run(path,mName, map, world);
-
-
+    extensions.ExecuteMapScript(path, mName, world);
 
     foreach (var layer in map.Layers)
     {
@@ -374,6 +371,7 @@ void ConvertMap(string file, World? world )
             objectLayerCount++;
         }
     }
+ 
 }
 ushort ConvertTo16BitNumber(Property input, string mapname)
 {

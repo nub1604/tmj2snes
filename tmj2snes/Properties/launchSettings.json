@@ -14,7 +14,7 @@
     },
     "nubproj": {
       "commandName": "Project",
-      "commandLineArgs": "-t \"C:\\Github\\nubproj\\maps\\tsdefendbase.tsj\" -t \"C:\\Github\\nubproj\\maps\\tstownsinner.tsj\" -t \"C:\\Github\\nubproj\\maps\\tiledeep.tsj\" -t \"C:\\Github\\nubproj\\maps\\tile3.tsj\" -t \"C:\\Github\\nubproj\\maps\\tile4.tsj\" -t \"C:\\Github\\nubproj\\maps\\tile5.tsj\" -a \"C:\\Github\\nubproj\\maps/\" -t! -w \"C:\\Github\\nubproj\\maps\\0ta.world\""
+      "commandLineArgs": "-t \"C:\\Github\\nubproj\\maps\\tsdefendbase.tsj\" -t \"C:\\Github\\nubproj\\maps\\tstownsinner.tsj\" -t \"C:\\Github\\nubproj\\maps\\tiledeep.tsj\" -t \"C:\\Github\\nubproj\\maps\\tile2.tsj\" -t \"C:\\Github\\nubproj\\maps\\tile3.tsj\" -t \"C:\\Github\\nubproj\\maps\\tile4.tsj\" -t \"C:\\Github\\nubproj\\maps\\tile5.tsj\" -a \"C:\\Github\\nubproj\\maps/\" -t! -w \"C:\\Github\\nubproj\\maps\\0ta.world\""
     }
   }
 } 

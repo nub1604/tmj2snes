@@ -1,20 +1,69 @@
 local json = require ("dkjson") -- Load the JSON library
-   if(debugLua) then
-end
-local trigger = "settrans"
+local cmn = require ("common") -- Load the JSON library
 
-function GetObjectsByTrigger(layer, trigger)
-    if not layer or not layer.Objects then
+
+config = {
+    appName = "settrans",
+    description = "creates maptransition table tiled objects named \"Regions\"",
+    version = 0.1
+}
+function runBegin()
+    if(debugLua) then
+        
+    end
+	return "testStart"    
+end
+function runEnd()
+	return "testEnd"    
+end
+
+function runMap()
+    local trigger = "settrans"
+    local sourceMapPath = cmn.join(basepath,"\\", mapname, ".tmj")
+    local sourceMap = decodeJsonFile(sourceMapPath)
+     if (not sourceMap) then
+       --print("Error: unable to decodeJsonFile " .. sourceMapPath)
+       return "";
+    end
+    local regionsLayer = getJsonLayerByName(sourceMap,"Regions")
+
+    -- Check if the layer exists
+    if (not regionsLayer) then
+        --print("Error: no regionsLayer in " .. sourceMapPath)
+       return "";
+    end
+
+ 
+    local objects = getJsonObjectsByTrigger(regionsLayer,trigger);
+    if (#objects == 0) then
+        return "";
+    end
+    return analyseObject(objects, trigger)	
+end
+
+function getJsonLayerByName(map, layerName)
+    for _, layer in ipairs(map.layers) do
+        if layer.name == layerName then
+            return layer 
+        end
+    end
+    return nil
+end
+
+function getJsonObjectsByTrigger(layer, trigger)
+    if not layer or not layer.objects then
         return {} -- Return an empty table if the layer is invalid
     end
     local matches = {}
-    for o = 0, layer.Objects.Count - 1 do
-        local obj = layer.Objects[o]
-        for i = 0, obj.Properties.Count - 1 do
-        local prop = obj.Properties[i]
-            if prop.Name == trigger then
-                table.insert(matches, obj)
-                break
+    for _, obj in ipairs(layer.objects) do
+        if(obj and obj.properties) then
+            for _, prop in ipairs(obj.properties) do
+                if(prop) then
+                    if prop.name == trigger then
+                        table.insert(matches, obj)
+                        break
+                    end
+                end
             end
         end
     end
@@ -30,17 +79,16 @@ function split(inputstr, sep)
     return t
 end
 
-function GetTriggerProperty(obj, trigger)
-    for i = 0, obj.Properties.Count - 1 do
-        local prop = obj.Properties[i]
-        if prop.Name == trigger then
-            return prop.Value
+function getTriggerProperty(obj, trigger)
+    for _, prop in ipairs(obj.properties) do
+        if prop.name == trigger then
+            return prop.value
         end
     end
     return nil
 end
 
-function DecodeJsonFile(filename)
+function decodeJsonFile(filename)
     local file = io.open(filename, "r")
     if not file then
         print("Error: Could not open file " .. filename)
@@ -56,26 +104,8 @@ function DecodeJsonFile(filename)
     end
 end
 
-function join(...)
-    local args = {...} -- Get all arguments
-    return table.concat(args, "") -- Join without spaces
-end
-function dump (tbl, indent)
-    if not indent then indent = 0 end
-    for k, v in pairs(tbl) do
-        formatting = string.rep("  ", indent) .. k .. ": "
-        if type(v) == "table" then
-            print(formatting)
-            dump(v, indent+1)
-        elseif type(v) == 'boolean' then
-            print(formatting .. tostring(v))      
-        else
-            print(formatting .. v)
-        end
-    end
-end
 
-function GetJsonObjectByType(jsonmap, type)
+function getJsonObjectByType(jsonmap, type)
     for _, layer in ipairs(jsonmap.layers) do
         if layer.name == "Regions" then
             for _, obj in ipairs(layer.objects) do
@@ -89,62 +119,42 @@ function GetJsonObjectByType(jsonmap, type)
 end
 
 
-function AnalyseObject(objects, trigger)
+
+function analyseObject(objects, trigger)
     local resultStrings = {} 
     for _,obj in ipairs(objects) do
-        local value = GetTriggerProperty(obj, trigger)
-        if(value) then
-            print(value)
+        local value = getTriggerProperty(obj, trigger)
+        if(value) then 
             local vs = split(value, ",")
             if(#vs > 2) then
                 local targetMap  = vs[1];
                 local type  = vs[2];
-                local direction = vs[3];    
-                local targetMapPath = join(basepath,"\\", targetMap, ".tmj")
-                local tm = DecodeJsonFile(targetMapPath)
-                local to = GetJsonObjectByType(tm,type)
+                local direction = vs[3]; 
+                local offset = vs[4] or 0;
+
+                local targetMapPath = cmn.join(basepath,"\\", targetMap, ".tmj")
+                local tm = decodeJsonFile(targetMapPath)
+                local to = getJsonObjectByType(tm,type)
                 
                 if(to) then
-                --Todo: Create Output                    
-
-                    local str = join(".db ", obj.X, ",", obj.Y, ",", obj.Width, ",", obj.Height, ",", to.x, ",", to.y, ",", to.width, ",", to.height, ",", direction)
-                    table.insert(t, str)
-                    resultStrings.i
-                    local x = 1
-
-                    print("to.x: " .. to.x)
-                    print("to.y: " .. to.y)
-                    print("to.width: " .. to.width)
-                    print("to.height: " .. to.height)
+       
+                    local str = ""
+                    cmn.switch(direction)
+                        .case("l", function() str = cmn.join(".db ", to.x -1, ",", 0, ",", "RF_LEFT")end)
+                        .case("r", function() str = cmn.join(".db ", to.x + to.width+1, ",", 0, ",", "RF_RIGHT")end)
+                        .case("u", function() str = cmn.join(".db ", 0, ",", tm.height -to.height -1, ",", "RF_UP")end)
+                        .case("d", function() str = cmn.join(".db ", 0, ",", to.y +to.height +1, ",", "RF_DOWN")end)
+                        .case("x", function() str = cmn.join(".db ", to.X, ",", to.Y, ",", "RF_DIRECT")end)
+                        .process()
+                    if (debugLua) then
+                        print("settrans: " .. str)
+                    end
+                    table.insert(resultStrings, str)
                 end
             else
-                 error(trigger .. "expects 3 value in " .. value)
+                error(trigger .. "expects 3 value in " .. value)
             end
         end
     end
+    return resultStrings
 end
-
-
-
-
-function GetLayerByName(layerName)
-    for _, layer in ipairs(map.Layers) do
-        if layer.Name == layerName then
-            return layer 
-        end
-    end
-    return nil
-end
-
-local regionsLayer = GetLayerByName("Regions")
-
--- Check if the layer exists
-if (not regionsLayer) then
-   return "";
-end
-
-local objects = GetObjectsByTrigger(regionsLayer,trigger);
-if (#objects == 0) then
-    return "";
-end
-AnalyseObject(objects, trigger)

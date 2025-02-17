@@ -7,211 +7,148 @@ using System.Text.Json;
 using tmj2snes.JsonFiles;
 using System.Text.Json.Serialization;
 using NLua;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace tmj2snes.CustomConverter
 {
     public class ConverterExtensions
     {
-
-        public List<JsonExtension> Converters { get; set; } = [];
+        public List<string> CustomScripts { get; set; } = [];
+        public List<StringBuilder> Output { get; set; } = [];
 
         public void LoadAll()
         {
-            Converters = [.. ExtensionLoader.LoadExtensions()];
+            CustomScripts = [.. ExtensionLoader.LoadExtensions().ToList()];
+            Output.AddRange(CustomScripts.Select(_ => new StringBuilder())); //adds a new stringbuilder for each script
         }
 
-        public void Run(string basepath, string mapID, TileMap map, World world)
+        public void ExecuteMapScript(string basepath, string mapID, World? world)
         {
-            foreach (var c in Converters)
+            for (int i = 0; i < CustomScripts.Count; i++)
             {
-
-                ExecuteLuaScript(c,basepath, mapID, map,world);
-                //ConvertLayer(basepath, mapID, map, world, c);
+                ExecuteMapScript(CustomScripts[i], basepath, mapID, world, Output[i]);
             }
         }
-
-        private static void ConvertLayer(string basepath, string mapID, TileMap map, World? world, JsonExtension c)
+        public void ExecuteAllBegin()
         {
-            var layer = map.Layers.FirstOrDefault(x => x.Type == c.LayerType && x.Name.StartsWith(c.LayerName));
-            if (layer == null) return;
-            var triggerObjects = layer.Objects.Where(x => x.Properties.Any(y => y.Name == c.TriggerName)).ToArray();
-            foreach (var to in triggerObjects)
+            for (int i = 0; i < CustomScripts.Count; i++)
             {
-                var property = to.Properties.FirstOrDefault(y => y.Name == c.TriggerName);
-                var value = property!.Value as string;
-                var pl = value.Split(',');
-                var il = c.InputLayout.Split(',');
-
-                if (pl.Length != il.Length)
-                {
-                    Console.WriteLine($"Warning InputLayout in {to.Name},  error source: map {mapID}, {c.TriggerName}");
-                }
-                HandleInputPattern(basepath, mapID, world, c, to, pl, il);
-            }
+                ExecuteBaseScript(CustomScripts[i], Output[i], "begin");
+            } 
         }
 
-        private static void HandleInputPattern(string basepath, string mapID, World? world, JsonExtension c, TiledObject to, string[] pl, string[] il)
+        public  void ExecuteAllEnd()
         {
-            TileMap? TargetMap = null;
-            TiledObject? TargetObject = null;
-            for (int i = 0; i < il.Length; i++)
+            for (int i = 0; i < CustomScripts.Count; i++)
             {
-                switch (il[i])
-                {
-                    case "tm":
-                        LoadTargetMap(basepath, mapID, world, c, pl, ref TargetMap, i);
-
-                        break;
-
-                    case "d":
-                        if (TargetMap == null)
-                        {
-                            Console.WriteLine($"Warning parameter \"d\" needs a valid tilemap loaded in {to.Name},  error source: map {mapID}, {c.TriggerName}");
-                            return;
-                        }
-                        if (TargetObject == null)
-                        {
-                            Console.WriteLine($"Warning parameter \"d\" needs a valid targetobject,  error source: map {mapID}, {c.TriggerName}");
-                            return;
-                        }
-
-                        switch (pl[i])
-                        {
-                           
-
-                            case "r":
-
-                                break;
-
-                            case "u":
-                                break;
-
-                            case "d":
-                                break;
-
-                            case "l":
-                                break;
-
-                            case "tr":
-                                break;
-                        }
-                        break;
-                    case "tr":
-                        if (TargetMap == null)
-                        {
-                            Console.WriteLine($"Warning \"tr\" needs a valid tilemap loaded in {to.Name},  error source: map {mapID}, {c.TriggerName}");
-                            return;
-                        }
-                        var layer = TargetMap.Layers.FirstOrDefault(x => x.Type == c.LayerType && x.Name.StartsWith(c.LayerName));
-                        if (layer == null)
-                        {
-                            Console.WriteLine($"Warning \"tr\" layer {c.LayerName} not found, error source: map {mapID}, {c.TriggerName}");
-                            return;
-                        }
-                        TargetObject = layer.Objects.FirstOrDefault(x => x.Type == pl[i]);
-                        if (TargetObject == null)
-                        {
-                            Console.WriteLine($"Warning \"tr\" object {pl[i]} not found, error source: map {mapID}, {c.TriggerName}");
-                            return;
-                        }
-
-
-                      
-                        break;
-                    default:
-                        break;
-                }
+                ExecuteBaseScript(CustomScripts[i], Output[i], "runEnd");
             }
-            //run script here
         }
-        static void ExecuteLuaScript(JsonExtension extension, string basepath, string mapId,  TileMap map, World? world)
+        private static void ExecuteBaseScript(string script, StringBuilder sbOutput, string function)
         {
             try
             {
-                using (Lua lua = new Lua())
-                {
+                using Lua lua = new Lua();
+                lua.DoString(script);
 #if DEBUG
-                    lua["debugLua"] = true;
+                lua["debugLua"] = true;
 #endif
-                    lua["basepath"] = basepath;
-                    lua["mapId"] = mapId;
-                    lua["map"] = map;
-                    if (world != null)
+                // Redirect Lua print() to C# Console.WriteLine
+                lua["print"] = (Action<object>)((msg) => Console.WriteLine("[Lua] " + msg));
+                var test = lua[function];
+              
+                if (lua[function] is LuaFunction luaFunction)
+                {
+                    var result = string.Join("", luaFunction.Call());
+                    if (result.Length > 0)
                     {
-                        lua["world"] = world;
+                        sbOutput.AppendLine();
                     }
-                    // Redirect Lua print() to C# Console.WriteLine
-                    lua["print"] = (Action<object>)((msg) => Console.WriteLine("[Lua] " + msg));
-                    object[] results = lua.DoString(extension.LuaScript);
-                    var res = results.Length > 0 ? results[0]?.ToString() ?? string.Empty : string.Empty;
+                }
+                else
+                {
+
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error executing {ex.Message}");
-
             }
         }
-        private static void LoadTargetMap(string basepath, string mapID, World? world, JsonExtension c, string[] pl, ref TileMap? TargetMap, int i)
+        private static void ExecuteMapScript(string script, string basepath, string mapname, World? world, StringBuilder sbOutput)
         {
-            var m = world?.Maps.FirstOrDefault(x => x.FileName.StartsWith(pl[i]));
-            if (m == null)
+            try
             {
-                Console.WriteLine($"Warning parameter  \"tf\" needs a valid map path {pl[i]},  error source: map {mapID}, {c.TriggerName}");
-                return;
+                using Lua lua = new Lua();
+                lua.DoString(script);
+#if DEBUG
+                lua["debugLua"] = true;
+#endif
+                lua["basepath"] = basepath;
+                lua["mapname"] = mapname;
+                if (world != null)
+                {
+                    lua["world"] = world;
+                }
+                // Redirect Lua print() to C# Console.WriteLine
+                lua["print"] = (Action<object>)((msg) => Console.WriteLine("[Lua] " + msg));
+
+                if (lua["runMap"] is LuaFunction luaFunction)
+                {
+
+                    object[] result = luaFunction.Call();
+                    if (result.Length > 0)
+                    {
+                        if (result[0] is LuaTable luaTable)
+                        {
+                            // Convert LuaTable to a C# string array
+                            string val = string.Join("\n", (luaTable.Values.Cast<string>()));
+                            sbOutput.AppendLine(val);
+                            var t = sbOutput.ToString();
+                        }
+                        else
+                        {
+                            string val = string.Join("", luaFunction.Call());
+                            if(val.Length > 0)
+                            sbOutput.AppendLine(val);
+                        }
+                    }
+                }
             }
-            var fullpath = Path.Combine(basepath, m.FileName);
-            TargetMap = FileHandler.LoadFile<TileMap>(fullpath);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error executing {ex.Message}");
+            }
         }
-    }
-
-    public class JsonExtension
-    {
-        public string LayerName { get; set; } = "";
-        public string LayerType { get; set; } = "";
-        public string TriggerName { get; set; } = "";
-        public string InputLayout { get; set; } = "";
-        public string OutputPath { get; set; } = "";
-        public string Script { get; set; } = "";
-
-
-
-
-        [JsonIgnore]
-        public StringBuilder Output { get; set; } = new(); 
-        [JsonIgnore]
-        public string LuaScript { get; set; } = "";
-
-       
-
     }
 
     internal static class ExtensionLoader
     {
-        internal static IEnumerable<JsonExtension> LoadExtensions()
+        internal static IEnumerable<string> LoadExtensions()
         {
-            foreach (var file in Directory.GetFiles("extensions", "*.json"))
+            foreach (var file in Directory.GetFiles("extensions", "*.lua"))
             {
-                var converter = JsonSerializer.Deserialize<JsonExtension>(File.ReadAllText(file));
-                if (converter == null)
+                var text = "";
+                try
                 {
-                    Console.WriteLine("Failed to load extension: " + file);
-                    continue;
+                 
+                    if (File.Exists(file))
+                    {
+                        text = File.ReadAllText(file);
+                        
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Warning script {file} not exist");
+                    }
                 }
-               var script = Path.Combine("extensions", converter.Script);
-                if (File.Exists(script))
+                catch (Exception)
                 {
-                    converter.LuaScript = File.ReadAllText(script);
-
+                    throw;
                 }
-                else
-                {
-                    Console.WriteLine($"Warning script {script} not exist");
-                }
-                    yield return converter;
+                if (text == "") continue;
+                yield return text;
             }
         }
-
     }
-        
-    }
+}

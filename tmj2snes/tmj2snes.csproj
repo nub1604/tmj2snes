@@ -12,10 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="lua\dkjson.lua">
+    <None Update="lua\common.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="extensions\settrans.json">
+    <None Update="lua\dkjson.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="extensions\settrans.lua">
