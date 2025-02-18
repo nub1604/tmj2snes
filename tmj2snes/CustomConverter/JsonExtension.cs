@@ -29,21 +29,23 @@ namespace tmj2snes.CustomConverter
                 ExecuteMapScript(CustomScripts[i], basepath, mapID, world, Output[i]);
             }
         }
+
         public void ExecuteAllBegin()
         {
             for (int i = 0; i < CustomScripts.Count; i++)
             {
                 ExecuteBaseScript(CustomScripts[i], Output[i], "begin");
-            } 
+            }
         }
 
-        public  void ExecuteAllEnd()
+        public void ExecuteAllEnd()
         {
             for (int i = 0; i < CustomScripts.Count; i++)
             {
                 ExecuteBaseScript(CustomScripts[i], Output[i], "runEnd");
             }
         }
+
         private static void ExecuteBaseScript(string script, StringBuilder sbOutput, string function)
         {
             try
@@ -53,21 +55,16 @@ namespace tmj2snes.CustomConverter
 #if DEBUG
                 lua["debugLua"] = true;
 #endif
-                // Redirect Lua print() to C# Console.WriteLine
                 lua["print"] = (Action<object>)((msg) => Console.WriteLine("[Lua] " + msg));
                 var test = lua[function];
-              
+
                 if (lua[function] is LuaFunction luaFunction)
                 {
-                    var result = string.Join("", luaFunction.Call());
+                    var result = string.Join("", luaFunction.Call(sbOutput.ToString()));
                     if (result.Length > 0)
                     {
                         sbOutput.AppendLine();
                     }
-                }
-                else
-                {
-
                 }
             }
             catch (Exception ex)
@@ -75,6 +72,7 @@ namespace tmj2snes.CustomConverter
                 Console.WriteLine($"Error executing {ex.Message}");
             }
         }
+
         private static void ExecuteMapScript(string script, string basepath, string mapname, World? world, StringBuilder sbOutput)
         {
             try
@@ -95,7 +93,6 @@ namespace tmj2snes.CustomConverter
 
                 if (lua["runMap"] is LuaFunction luaFunction)
                 {
-
                     object[] result = luaFunction.Call();
                     if (result.Length > 0)
                     {
@@ -109,8 +106,8 @@ namespace tmj2snes.CustomConverter
                         else
                         {
                             string val = string.Join("", luaFunction.Call());
-                            if(val.Length > 0)
-                            sbOutput.AppendLine(val);
+                            if (val.Length > 0)
+                                sbOutput.AppendLine(val);
                         }
                     }
                 }
@@ -131,11 +128,9 @@ namespace tmj2snes.CustomConverter
                 var text = "";
                 try
                 {
-                 
                     if (File.Exists(file))
                     {
                         text = File.ReadAllText(file);
-                        
                     }
                     else
                     {

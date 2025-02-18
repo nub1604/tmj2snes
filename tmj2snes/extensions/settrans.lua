@@ -1,20 +1,32 @@
 local json = require ("dkjson") -- Load the JSON library
 local cmn = require ("common") -- Load the JSON library
 
-
 config = {
     appName = "settrans",
     description = "creates maptransition table tiled objects named \"Regions\"",
+    filePath = "../src/data/",
+    fileName = "settransa.asm",
     version = 0.1
 }
+
 function runBegin()
     if(debugLua) then
-        
+        print("Running " .. appName)
     end
 	return "testStart"    
 end
-function runEnd()
-	return "testEnd"    
+
+function runEnd(content)
+
+    content = content .. "\n .ends"
+    local savepath = cmn.join(config.filePath, config.fileName)
+    if(debugLua) then
+        print("Sava fila " .. savepath)
+    end
+    local file = io.open(savepath, "w")
+    file:write(content)
+    file:close()
+
 end
 
 function runMap()
@@ -25,9 +37,11 @@ function runMap()
        --print("Error: unable to decodeJsonFile " .. sourceMapPath)
        return "";
     end
+
+    -- Check if the regionlayer exists
     local regionsLayer = getJsonLayerByName(sourceMap,"Regions")
 
-    -- Check if the layer exists
+
     if (not regionsLayer) then
         --print("Error: no regionsLayer in " .. sourceMapPath)
        return "";
@@ -38,7 +52,15 @@ function runMap()
     if (#objects == 0) then
         return "";
     end
-    return analyseObject(objects, trigger)	
+
+    local result = analyseObject(objects, trigger)
+
+    if(#result > 0) then
+        table.insert(result, 1,".settrans_" .. mapname)
+        table.insert(result, ".settrans_" .. mapname .. "_end")
+        return result
+    end
+    return nil
 end
 
 function getJsonLayerByName(map, layerName)
@@ -122,7 +144,9 @@ end
 
 function analyseObject(objects, trigger)
     local resultStrings = {} 
+
     for _,obj in ipairs(objects) do
+
         local value = getTriggerProperty(obj, trigger)
         if(value) then 
             local vs = split(value, ",")
@@ -130,7 +154,8 @@ function analyseObject(objects, trigger)
                 local targetMap  = vs[1];
                 local type  = vs[2];
                 local direction = vs[3]; 
-                local offset = vs[4] or 0;
+                local offsetX = vs[4] or 0;
+                local offsetY = vs[5] or 0;
 
                 local targetMapPath = cmn.join(basepath,"\\", targetMap, ".tmj")
                 local tm = decodeJsonFile(targetMapPath)
@@ -140,15 +165,12 @@ function analyseObject(objects, trigger)
        
                     local str = ""
                     cmn.switch(direction)
-                        .case("l", function() str = cmn.join(".db ", to.x -1, ",", 0, ",", "RF_LEFT")end)
-                        .case("r", function() str = cmn.join(".db ", to.x + to.width+1, ",", 0, ",", "RF_RIGHT")end)
-                        .case("u", function() str = cmn.join(".db ", 0, ",", tm.height -to.height -1, ",", "RF_UP")end)
-                        .case("d", function() str = cmn.join(".db ", 0, ",", to.y +to.height +1, ",", "RF_DOWN")end)
-                        .case("x", function() str = cmn.join(".db ", to.X, ",", to.Y, ",", "RF_DIRECT")end)
+                        .case("l", function() str = cmn.join(".db ",obj.type, ",", ,"," ,to.x -1+offsetX, ",", offsetY, ",", "RF_LEFT") end) 
+                        .case("r", function() str = cmn.join(".db ",obj.type, ",", ,"," ,to.x + to.width+1+offsetX, ",", offsetY, ",", "RF_RIGHT") end)
+                        .case("u", function() str = cmn.join(".db ",obj.type, ",", ,"," ,offsetX, ",", tm.height -to.height -1 +offsetY, ",", "RF_UP") end)
+                        .case("d", function() str = cmn.join(".db ",obj.type, ",", ,"," ,offsetX, ",", to.y +to.height +1+offsetY, ",", "RF_DOWN") end)
+                        .case("x", function() str = cmn.join(".db ",obj.type, ",", ,"," ,to.X, ",", to.Y, ",", "RF_DIRECT") end)
                         .process()
-                    if (debugLua) then
-                        print("settrans: " .. str)
-                    end
                     table.insert(resultStrings, str)
                 end
             else
