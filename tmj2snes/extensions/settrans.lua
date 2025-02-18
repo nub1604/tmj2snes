@@ -1,5 +1,9 @@
-local json = require ("dkjson") -- Load the JSON library
 local cmn = require ("common") -- Load the JSON library
+
+
+local mapNumber = 0
+local sx, sy = 0, 0
+
 
 config = {
     appName = "settrans",
@@ -13,7 +17,7 @@ function runBegin()
     if(debugLua) then
         print("Running " .. appName)
     end
-	return "testStart"    
+	return ""    
 end
 
 function runEnd(content)
@@ -31,13 +35,16 @@ end
 
 function runMap()
     local trigger = "settrans"
-    local sourceMapPath = cmn.join(basepath,"\\", mapname, ".tmj")
-    local sourceMap = decodeJsonFile(sourceMapPath)
+    local mapFile = cmn.join( mapname, ".tmj")
+
+    local sourceMapPath = cmn.join(basepath,"\\",mapFile)
+    local sourceMap = cmn.decodeJsonFile(sourceMapPath)
      if (not sourceMap) then
        --print("Error: unable to decodeJsonFile " .. sourceMapPath)
        return "";
     end
 
+     mapNumber = extractNumber(mapname);
     -- Check if the regionlayer exists
     local regionsLayer = getJsonLayerByName(sourceMap,"Regions")
 
@@ -52,7 +59,8 @@ function runMap()
     if (#objects == 0) then
         return "";
     end
-
+    
+    sx, sy  = getWorldPosition(world, mapFile)
     local result = analyseObject(objects, trigger)
 
     if(#result > 0) then
@@ -92,15 +100,6 @@ function getJsonObjectsByTrigger(layer, trigger)
     return matches
 end
 
-function split(inputstr, sep)
-    local trimmed = string.gsub(inputstr, "%s+", "")
-    local t = {}
-    for str in string.gmatch(trimmed, "([^"..sep.."]+)") do
-        table.insert(t, str)
-    end
-    return t
-end
-
 function getTriggerProperty(obj, trigger)
     for _, prop in ipairs(obj.properties) do
         if prop.name == trigger then
@@ -110,21 +109,16 @@ function getTriggerProperty(obj, trigger)
     return nil
 end
 
-function decodeJsonFile(filename)
-    local file = io.open(filename, "r")
-    if not file then
-        print("Error: Could not open file " .. filename)
-        return nil
-    end
-    local content = file:read("*a")
-    file:close()
-    local obj, _, err = json.decode (content, 1, nil)
-    if err then
-        print("JSON Decode Error: " .. err)
-    else
-        return obj
+function  getWorldPosition(world, filename)
+    for index = 1, world.Maps.Length -1 do
+        local map =  world.Maps[index]
+        if map.FileName == filename then
+            print(map.FileName .. " - " .. filename)
+            return map.X,map.Y
+        end
     end
 end
+
 
 
 function getJsonObjectByType(jsonmap, type)
@@ -142,6 +136,17 @@ end
 
 
 
+function extractNumber(str)
+    -- Remove file extension if present
+    str = str:match("^(.-)%.") or str
+    -- Extract the last two numbers using pattern matching
+    local num1, num2 = str:match("_(%d+)_(%d+)$")
+    if num1 and num2 then
+        return tonumber(num1 .. num2)
+    end
+    return nil -- Return nil if pattern doesn't match
+end
+
 function analyseObject(objects, trigger)
     local resultStrings = {} 
 
@@ -149,28 +154,36 @@ function analyseObject(objects, trigger)
 
         local value = getTriggerProperty(obj, trigger)
         if(value) then 
-            local vs = split(value, ",")
+            local vs = cmn.split(value, ",")
             if(#vs > 2) then
-                local targetMap  = vs[1];
+                local targetMap = vs[1];
                 local type  = vs[2];
                 local direction = vs[3]; 
                 local offsetX = vs[4] or 0;
                 local offsetY = vs[5] or 0;
 
-                local targetMapPath = cmn.join(basepath,"\\", targetMap, ".tmj")
-                local tm = decodeJsonFile(targetMapPath)
+                local targetMapFile = cmn.join(targetMap, ".tmj")
+                local targetMapPath = cmn.join(basepath,"\\", targetMapFile)
+                local tm = cmn.decodeJsonFile(targetMapPath)
                 local to = getJsonObjectByType(tm,type)
                 
+                local ox, oy = getWorldPosition(world, targetMapFile)
+               
+                if (direction ~= "x") then
+                    ox = sx - ox
+                    oy = sy - oy
+                end
+
                 if(to) then
        
-                    local str = ""
+                    local str = cmn.join(".db ",obj.type, ",", mapNumber ,",")
                     cmn.switch(direction)
-                        .case("l", function() str = cmn.join(".db ",obj.type, ",", ,"," ,to.x -1+offsetX, ",", offsetY, ",", "RF_LEFT") end) 
-                        .case("r", function() str = cmn.join(".db ",obj.type, ",", ,"," ,to.x + to.width+1+offsetX, ",", offsetY, ",", "RF_RIGHT") end)
-                        .case("u", function() str = cmn.join(".db ",obj.type, ",", ,"," ,offsetX, ",", tm.height -to.height -1 +offsetY, ",", "RF_UP") end)
-                        .case("d", function() str = cmn.join(".db ",obj.type, ",", ,"," ,offsetX, ",", to.y +to.height +1+offsetY, ",", "RF_DOWN") end)
-                        .case("x", function() str = cmn.join(".db ",obj.type, ",", ,"," ,to.X, ",", to.Y, ",", "RF_DIRECT") end)
-                        .process()
+                    .case("l", function() str = cmn.join(str, offsetX + to.x - tm.width -1      , ",", offsetY + oy                      , ",", "RF_LEFT") end) 
+                    .case("r", function() str = cmn.join(str, offsetX + to.x + to.width + oy + 1, ",", offsetY                           , ",", "RF_RIGHT") end)
+                    .case("u", function() str = cmn.join(str, offsetX + ox                      , ",", offsetY + tm.height - to.height -8, ",", "RF_UP") end)
+                    .case("d", function() str = cmn.join(str, offsetX + ox                      , ",", offsetY + to.y + to.height + 1    , ",", "RF_DOWN") end)
+                    .case("x", function() str = cmn.join(str, offsetX + to.x                    , ",", offsetY + to.y                    , ",", "RF_DIRECT") end)
+                    .process()
                     table.insert(resultStrings, str)
                 end
             else

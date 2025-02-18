@@ -18,7 +18,7 @@ const int N_REGIONS = 16;     // maximum regions
 const uint TILED_FLIPPED_HORIZONTALLY_FLAG = 0x80000000;
 const uint TILED_FLIPPED_VERTICALLY_FLAG = 0x40000000;
 
-List<string> _dataSizeExports = new();
+List<string> _dataSizeExports = [];
 string[] _arguments = args;
 bool _disableTileset = false;
 string _file = "";
@@ -27,10 +27,10 @@ long _currentBankCounter = 0;
 long _totalBankCounter = 0;
 long _SectionCounter = 0;
 
-List<(eConvertMode, string)> WorkItems = new();
+List<(eConvertMode, string)> WorkItems = [];
 pvsneslib_tile_t[] tilesetbuffer = new pvsneslib_tile_t[N_METATILES];
-StringBuilder _dataWriter = new StringBuilder();
-StringBuilder _importWriter = new StringBuilder();
+StringBuilder _dataWriter = new ();
+StringBuilder _importWriter = new ();
 
 _importWriter.AppendLine("#ifndef TILEDEXPORT_H");
 _importWriter.AppendLine("#define TILEDEXPORT_H");
@@ -341,7 +341,7 @@ void ConvertMap(string file, World? world )
             {
                 foreach (var obj in layer.Objects)
                 {
-                    pvsneslib_object_t pvobj = new pvsneslib_object_t
+                    pvsneslib_object_t pvobj = new()
                     {
                         x = Convert.ToUInt16(obj.X),
                         y = Convert.ToUInt16(obj.Y),
@@ -377,7 +377,10 @@ ushort ConvertTo16BitNumber(Property input, string mapname)
 {
     try
     {
+#pragma warning disable IDE0079 // Bullshit warning
+#pragma warning disable SYSLIB1045 //
         var res1 = new Regex(@"\b0x[0-9A-Fa-f]+\b").Match(input.Value.Trim());
+
         if (res1.Success)
         {
             var hv1 = res1.Value[2..];
@@ -398,6 +401,8 @@ ushort ConvertTo16BitNumber(Property input, string mapname)
             if (ushort.TryParse(hv3, System.Globalization.NumberStyles.HexNumber, null, out ushort result))
                 return result;
         }
+#pragma warning restore SYSLIB1045 // 
+#pragma warning restore IDE0079 //
         return Convert.ToUInt16(input.Value);
     }
     catch (Exception)
@@ -408,13 +413,9 @@ ushort ConvertTo16BitNumber(Property input, string mapname)
     return 0;
 
 }
-
 string GetFileFromArgs(int index)
 {
-    if (index >= _arguments.Length)
-    {
-        throw new ArgumentOutOfRangeException($"filepath expected");
-    }
+    ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, _arguments.Length);
     return _arguments[index];
 }
 

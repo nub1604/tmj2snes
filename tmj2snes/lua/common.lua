@@ -1,9 +1,30 @@
-﻿local common = {}
+﻿local json = require ("dkjson") -- Load the JSON library
+local common = {}
 
 function common.join(...)
-    local args = {...} -- Get all arguments
+    local args = {...} -- Get all arguments 
+    for i = 1, #args do
+        if args[i] == nil then
+            print("Error: Argument " .. i .. " is nil")
+            for j = 1, i-1 do
+                print("Args" .. j .. ": " .. args[j])
+            end
+        end
+    end
     return table.concat(args, "") -- Join without spaces
 end
+
+
+function common.split(inputstr, sep)
+    local trimmed = string.gsub(inputstr, "%s+", "")
+    local t = {}
+    for str in string.gmatch(trimmed, "([^"..sep.."]+)") do
+        table.insert(t, str)
+    end
+    return t
+end
+
+
 
 function common.dump (tbl, indent)
     if not indent then indent = 0 end
@@ -48,5 +69,23 @@ function common.switch(element)
   
   return Table
 end
+
+
+function common.decodeJsonFile(filename)
+    local file = io.open(filename, "r")
+    if not file then
+        print("Error: Could not open file " .. filename)
+        return nil
+    end
+    local content = file:read("*a")
+    file:close()
+    local obj, _, err = json.decode (content, 1, nil)
+    if err then
+        print("JSON Decode Error: " .. err)
+    else
+        return obj
+    end
+end
+
 
 return common -- Return the module

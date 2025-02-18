@@ -38,7 +38,7 @@ namespace tmj2snes.JsonFiles
         }
 
         [JsonPropertyName("maps")]
-        public List<Map> Maps { get; set; } = new ();
+        public Map[] Maps { get; set; } = [];
 
         [JsonPropertyName("onlyShowAdjacentMaps")]
         public bool OnlyShowAdjacentMaps { get; set; }

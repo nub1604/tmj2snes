@@ -50,7 +50,7 @@ namespace tmj2snes.CustomConverter
         {
             try
             {
-                using Lua lua = new Lua();
+                using Lua lua = new ();
                 lua.DoString(script);
 #if DEBUG
                 lua["debugLua"] = true;
@@ -77,7 +77,7 @@ namespace tmj2snes.CustomConverter
         {
             try
             {
-                using Lua lua = new Lua();
+                using Lua lua = new ();
                 lua.DoString(script);
 #if DEBUG
                 lua["debugLua"] = true;
@@ -105,7 +105,7 @@ namespace tmj2snes.CustomConverter
                         }
                         else
                         {
-                            string val = string.Join("", luaFunction.Call());
+                            string val = string.Join("", result[0]);
                             if (val.Length > 0)
                                 sbOutput.AppendLine(val);
                         }
