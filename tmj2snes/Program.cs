@@ -7,7 +7,7 @@ using tmj2snes.JsonFiles;
 
 
 
-ConverterExtensions extensions = new();
+LuaTmj extensions = new();
 extensions.LoadAll();
 extensions.ExecuteAllBegin();
 

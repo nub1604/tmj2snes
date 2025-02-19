@@ -8,25 +8,16 @@ local sx, sy = 0, 0
 config = {
     appName = "settrans",
     description = "creates maptransition table tiled objects named \"Regions\"",
-    filePath = "../src/manager/code/map/",
-    fileName = "settransa.c",
+    filePath = "../src/data/",
+    fileName = "settransa.asm",
     version = 0.1
 }
 
 function runBegin()
     if(debugLua) then
-        print("Running " .. config.appName)
+        print("Running " .. appName)
     end
-    
-    local startdefs  = {}
-    table.insert(startdefs, "#include <snes.h>")
-    table.insert(startdefs, "#include \"tristansadv.h\"")
-    table.insert(startdefs, "#define R_LEFT 1")
-    table.insert(startdefs, "#define R_RIGHT 2")
-    table.insert(startdefs, "#define R_TOP 3")
-    table.insert(startdefs, "#define R_BOTTOM 4")
-
-	return startdefs    
+	return ""    
 end
 
 function runEnd(content)

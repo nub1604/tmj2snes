@@ -9,141 +9,137 @@ using System.Text.Json.Serialization;
 using NLua;
 using static System.Net.Mime.MediaTypeNames;
 
-namespace tmj2snes.CustomConverter
+namespace tmj2snes.CustomConverter;
+
+public class LuaTmj
 {
-    public class ConverterExtensions
+
+#pragma warning disable IDE1006 
+    private List<string> _scripts { get; set; } = [];
+    private List<StringBuilder> _output { get; set; } = [];
+#pragma warning restore IDE1006 
+
+    public void LoadAll()
     {
-        public List<string> CustomScripts { get; set; } = [];
-        public List<StringBuilder> Output { get; set; } = [];
+        _scripts = [.. ScriptLoader.LoadScript().ToList()];
+        _output.AddRange(_scripts.Select(_ => new StringBuilder())); //adds a new stringbuilder for each script
+    }
 
-        public void LoadAll()
-        {
-            CustomScripts = [.. ExtensionLoader.LoadExtensions().ToList()];
-            Output.AddRange(CustomScripts.Select(_ => new StringBuilder())); //adds a new stringbuilder for each script
-        }
+    public void ExecuteMapScript(string basepath, string mapID, World? world)
+    {
+        for (int i = 0; i < _scripts.Count; i++)
+            ExecuteMapScript(_scripts[i], basepath, mapID, world, _output[i]);
+    }
 
-        public void ExecuteMapScript(string basepath, string mapID, World? world)
-        {
-            for (int i = 0; i < CustomScripts.Count; i++)
-            {
-                ExecuteMapScript(CustomScripts[i], basepath, mapID, world, Output[i]);
-            }
-        }
+    public void ExecuteAllBegin()
+    {
+        for (int i = 0; i < _scripts.Count; i++)
+            ExecuteBaseScript(_scripts[i], _output[i], "runBegin");
+    }
 
-        public void ExecuteAllBegin()
-        {
-            for (int i = 0; i < CustomScripts.Count; i++)
-            {
-                ExecuteBaseScript(CustomScripts[i], Output[i], "begin");
-            }
-        }
+    public void ExecuteAllEnd()
+    {
+        for (int i = 0; i < _scripts.Count; i++)
+            ExecuteBaseScript(_scripts[i], _output[i], "runEnd");
+    }
 
-        public void ExecuteAllEnd()
+    private static void ExecuteBaseScript(string script, StringBuilder sbOutput, string function)
+    {
+        try
         {
-            for (int i = 0; i < CustomScripts.Count; i++)
-            {
-                ExecuteBaseScript(CustomScripts[i], Output[i], "runEnd");
-            }
-        }
-
-        private static void ExecuteBaseScript(string script, StringBuilder sbOutput, string function)
-        {
-            try
-            {
-                using Lua lua = new ();
-                lua.DoString(script);
+            using Lua lua = new();
+            lua.DoString(script);
 #if DEBUG
-                lua["debugLua"] = true;
+            lua["debugLua"] = true;
 #endif
-                lua["print"] = (Action<object>)((msg) => Console.WriteLine("[Lua] " + msg));
-                var test = lua[function];
+            lua["print"] = (Action<object>)((msg) => Console.WriteLine("[Lua] " + msg));
+            var test = lua[function];
 
-                if (lua[function] is LuaFunction luaFunction)
-                {
-                    var result = string.Join("", luaFunction.Call(sbOutput.ToString()));
-                    if (result.Length > 0)
-                    {
-                        sbOutput.AppendLine();
-                    }
-                }
-            }
-            catch (Exception ex)
+            if (lua[function] is LuaFunction luaFunction)
             {
-                Console.WriteLine($"Error executing {ex.Message}");
+                CallLuaScript(sbOutput, luaFunction);
             }
         }
-
-        private static void ExecuteMapScript(string script, string basepath, string mapname, World? world, StringBuilder sbOutput)
+        catch (Exception ex)
         {
-            try
-            {
-                using Lua lua = new ();
-                lua.DoString(script);
-#if DEBUG
-                lua["debugLua"] = true;
-#endif
-                lua["basepath"] = basepath;
-                lua["mapname"] = mapname;
-                if (world != null)
-                {
-                    lua["world"] = world;
-                }
-                // Redirect Lua print() to C# Console.WriteLine
-                lua["print"] = (Action<object>)((msg) => Console.WriteLine("[Lua] " + msg));
-
-                if (lua["runMap"] is LuaFunction luaFunction)
-                {
-                    object[] result = luaFunction.Call();
-                    if (result.Length > 0)
-                    {
-                        if (result[0] is LuaTable luaTable)
-                        {
-                            // Convert LuaTable to a C# string array
-                            string val = string.Join("\n", (luaTable.Values.Cast<string>()));
-                            sbOutput.AppendLine(val);
-                            var t = sbOutput.ToString();
-                        }
-                        else
-                        {
-                            string val = string.Join("", result[0]);
-                            if (val.Length > 0)
-                                sbOutput.AppendLine(val);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error executing {ex.Message}");
-            }
+            Console.WriteLine($"Error executing {ex.Message}");
         }
     }
 
-    internal static class ExtensionLoader
+    private static void ExecuteMapScript(string script, string basepath, string mapname, World? world, StringBuilder sbOutput)
     {
-        internal static IEnumerable<string> LoadExtensions()
+        try
         {
-            foreach (var file in Directory.GetFiles("extensions", "*.lua"))
+            using Lua lua = new();
+            lua.DoString(script);
+#if DEBUG
+            lua["debugLua"] = true;
+#endif
+            lua["basepath"] = basepath;
+            lua["mapname"] = mapname;
+            if (world != null)
             {
-                var text = "";
-                try
-                {
-                    if (File.Exists(file))
-                    {
-                        text = File.ReadAllText(file);
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Warning script {file} not exist");
-                    }
-                }
-                catch (Exception)
-                {
-                    throw;
-                }
-                if (text == "") continue;
-                yield return text;
+                lua["world"] = world;
             }
+            // Redirect Lua print() to C# Console.WriteLine
+            lua["print"] = (Action<object>)((msg) => Console.WriteLine("[Lua] " + msg));
+
+            if (lua["runMap"] is LuaFunction luaFunction)
+            {
+                CallLuaScript(sbOutput, luaFunction);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error executing {ex.Message}");
+        }
+    }
+
+    private static void CallLuaScript(StringBuilder sbOutput, LuaFunction luaFunction)
+    {
+        object[] result = luaFunction.Call(sbOutput.ToString());
+        if (result.Length == 0) return;
+
+        if (result[0] is LuaTable luaTable)
+        {
+            // Convert LuaTable to a C# string array
+            string val = string.Join("\n", (luaTable.Values.Cast<string>()));
+            sbOutput.AppendLine(val);
+            var t = sbOutput.ToString();
+        }
+        else
+        {
+            string val = string.Join("", result[0]);
+            if (val.Length > 0)
+                sbOutput.AppendLine(val);
+        }
+    }
+}
+
+internal static class ScriptLoader
+{
+    internal static IEnumerable<string> LoadScript()
+    {
+        foreach (var file in Directory.GetFiles("extensions", "*.lua"))
+        {
+            var text = "";
+            try
+            {
+                if (File.Exists(file))
+                {
+                    text = File.ReadAllText(file);
+                }
+                else
+                {
+                    Console.WriteLine($"Warning script {file} not exist");
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            if (text == "") continue;
+            yield return text;
         }
     }
 }
