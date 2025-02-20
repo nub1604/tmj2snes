@@ -12,13 +12,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="extensions\maploader.lua">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="lua\common.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="lua\dkjson.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="extensions\settrans.lua">
+    <None Update="lua\settrans.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="lua\backup_settrans.lua">

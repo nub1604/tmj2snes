@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿
 using System.Text;
-using System.Threading.Tasks;
-using System.Text.Json;
 using tmj2snes.JsonFiles;
-using System.Text.Json.Serialization;
 using NLua;
-using static System.Net.Mime.MediaTypeNames;
+
 
 namespace tmj2snes.CustomConverter;
 
@@ -112,34 +107,6 @@ public class LuaTmj
             string val = string.Join("", result[0]);
             if (val.Length > 0)
                 sbOutput.AppendLine(val);
-        }
-    }
-}
-
-internal static class ScriptLoader
-{
-    internal static IEnumerable<string> LoadScript()
-    {
-        foreach (var file in Directory.GetFiles("extensions", "*.lua"))
-        {
-            var text = "";
-            try
-            {
-                if (File.Exists(file))
-                {
-                    text = File.ReadAllText(file);
-                }
-                else
-                {
-                    Console.WriteLine($"Warning script {file} not exist");
-                }
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-            if (text == "") continue;
-            yield return text;
         }
     }
 }
