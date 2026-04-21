@@ -247,16 +247,18 @@ void ConvertMap(string file, World? world )
 
     var path = new FileInfo(file).Directory!.FullName;
     var mName = Path.GetFileNameWithoutExtension(file);
+    Tileset tslocal = null;
     if (!_disableTileset)
     {
-        var ts = map.Tilesets[0];
-        if (!string.IsNullOrEmpty(ts.Source))
+        tslocal = map.Tilesets[0];
+        if (!string.IsNullOrEmpty(tslocal.Source))
         {
-            var tsPath = Path.Combine(path, ts.Source);
-            ts = ExtractTilesetPropsFromFile(tsPath);
+            var tsPath = Path.Combine(path, tslocal.Source);
+            tslocal = ExtractTilesetPropsFromFile(tsPath);
         }
-        ConvertTileset_T16(file, ts);
-        ConvertTileset_B16(file, ts);
+      
+        ConvertTileset_T16(file, tslocal);
+        ConvertTileset_B16(file, tslocal);
         _dataWriter.AppendLine();
     }
     int objectLayerCount = 0;
@@ -267,36 +269,107 @@ void ConvertMap(string file, World? world )
     {
         if (layer.Type == "tilelayer")
         {
-            using (FileStream mapStream = new(Path.Combine(path, $"{layer.Name}.m16"), FileMode.Create))
+            if (layer.Name.StartsWith("bake"))
             {
-                PutWord((ushort)(map.Width * map.Tilewidth), mapStream);
-                PutWord((ushort)(map.Height * map.Tileheight), mapStream);
-                PutWord((ushort)(layer.Data.Count * 2), mapStream);
-                for (int i = 0; i < layer.Data.Count; i++)
+                if (tslocal == null)
                 {
-                    var tileattr = layer.Data[i];
-                    if (tileattr != null)
+                    tslocal = map.Tilesets[0];
+                    if (!string.IsNullOrEmpty(tslocal.Source))
                     {
-                        var td = tileattr.ToString();
-                        td = td == "0" ? "1" : td; //prevent going negative
-
-                        var finalf = (Convert.ToUInt32(td) - 1) & 0x03FF;
-                        ushort tilesnes = Convert.ToUInt16(finalf); // keep on the low 16bits of tile number
-
-                        if ((Convert.ToUInt32(td) & TILED_FLIPPED_HORIZONTALLY_FLAG) != 0) // Flipx attribute
-                            tilesnes |= (1 << 14);
-                        if ((Convert.ToUInt32(td) & TILED_FLIPPED_VERTICALLY_FLAG) != 0) // Flipy attribute
-                            tilesnes |= (1 << 15);
-
-                        PutWord(tilesnes, mapStream);
+                        var tsPath = Path.Combine(path, tslocal.Source);
+                        tslocal = ExtractTilesetPropsFromFile(tsPath) ?? new();
                     }
-                    // no (certainly an error in the map with no tile assignment), write 0
-                    else
-                        PutWord(0x0000, mapStream);
+
                 }
+
+
+
+                // tslocal.Tiles;
+                //var paletteMapping = tile.Properties.Where(x => x.Name == "palette").Select(x => Convert.ToInt16(x.Value)).ToList(); ;
+
+
+            
+
+                using (FileStream mapStream = new(Path.Combine(path, $"{layer.Name}.bg16"), FileMode.Create))
+                        {
+                            PutWord((ushort)(map.Width * map.Tilewidth), mapStream);
+                            PutWord((ushort)(map.Height * map.Tileheight), mapStream);
+                            PutWord((ushort)(layer.Data.Count * 2), mapStream);
+                            for (int i = 0; i < layer.Data.Count; i++)
+                            {
+                     
+                                var tileattr = layer.Data[i];
+                                if (tileattr != null)
+                                {
+                                    var td = tileattr.ToString();
+                                    td = td == "0" ? "1" : td; //prevent going negative
+
+                                          
+                                 
+
+                                    var tileId = (Convert.ToUInt32(td) - 1) & 0x03FF;
+                   
+                                    var resadd = tilesetbuffer[tileId].priority > 0 ? 0x2000 : 0x0000;
+                            resadd |= Math.Clamp(tilesetbuffer[tileId].palette, (ushort)0, (ushort)7) << 10;
+
+
+
+                            ushort tilesnes = Convert.ToUInt16(tileId); // keep on the low 16bits of tile number
+
+                                    if ((Convert.ToUInt32(td) & TILED_FLIPPED_HORIZONTALLY_FLAG) != 0) // Flipx attribute
+                                        tilesnes |= (1 << 14);
+                                    if ((Convert.ToUInt32(td) & TILED_FLIPPED_VERTICALLY_FLAG) != 0) // Flipy attribute
+                                        tilesnes |= (1 << 15);
+
+                            tilesnes |= (ushort)resadd;
+
+                                    PutWord(tilesnes, mapStream);
+                                }
+                                // no (certainly an error in the map with no tile assignment), write 0
+                                else
+                                    PutWord(0x0000, mapStream);
+                            }
+                        }
+                        WriteDataASM(layer.Name, "", "bg16", path);
+                        WriteImports(layer.Name, ""); 
             }
-            WriteDataASM(layer.Name, "", "m16", path);
-            WriteImports(layer.Name, "");
+            else
+            {
+
+
+
+                using (FileStream mapStream = new(Path.Combine(path, $"{layer.Name}.m16"), FileMode.Create))
+                {
+                    PutWord((ushort)(map.Width * map.Tilewidth), mapStream);
+                    PutWord((ushort)(map.Height * map.Tileheight), mapStream);
+                    PutWord((ushort)(layer.Data.Count * 2), mapStream);
+                    for (int i = 0; i < layer.Data.Count; i++)
+                    {
+                        var tileattr = layer.Data[i];
+                        if (tileattr != null)
+                        {
+                            var td = tileattr.ToString();
+                            td = td == "0" ? "1" : td; //prevent going negative
+
+                            var finalf = (Convert.ToUInt32(td) - 1) & 0x03FF;
+                            ushort tilesnes = Convert.ToUInt16(finalf); // keep on the low 16bits of tile number
+
+                            if ((Convert.ToUInt32(td) & TILED_FLIPPED_HORIZONTALLY_FLAG) != 0) // Flipx attribute
+                                tilesnes |= (1 << 14);
+                            if ((Convert.ToUInt32(td) & TILED_FLIPPED_VERTICALLY_FLAG) != 0) // Flipy attribute
+                                tilesnes |= (1 << 15);
+
+                            PutWord(tilesnes, mapStream);
+                        }
+                        // no (certainly an error in the map with no tile assignment), write 0
+                        else
+                            PutWord(0x0000, mapStream);
+                    }
+                }
+                WriteDataASM(layer.Name, "", "m16", path);
+                WriteImports(layer.Name, "");
+            }
+
         }
         else if (layer.Name.StartsWith("Regions") && layer.Type == "objectgroup")
         {
